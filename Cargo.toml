@@ -1,0 +1,61 @@
+[package]
+name = "extanded_spl"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "extanded_spl"
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+solana-program = "1.18"
+solana-sdk = "1.18"
+solana-program-test = "1.18"
+light-sdk = { version = "0.11.0", features = ["account-compression"]}
+thiserror = "2.0.11"
+borsh = "1.5.4"
+light-sdk-macros = "0.4.0"
+signature = "1.6.4"
+borsh-derive = "1.5.4"
+light-hasher = "1.1.0"
+light-utils = "1.1.0"
+rand = "0.8.5"
+
+#bollard = { version = "0.16.1", features = ["native-tls"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+assert_matches = "1.5"       # For clean assertions
+#testcontainers = { version = "0.16", default-features = false }
+ctrlc = "3.4.5"
+
+[features]
+no-entrypoint = []
+
+#cargo install spl-token-cli --locked
+#cargo build-bpf --manifest-path <PATH_TO_YOUR_CARGO_TOML>
+#cargo build-bpf --manifest-path ./Cargo.toml
+#docker pull solanalabs/solana:v1.18.26
+#sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
+
+#export COPYFILE_DISABLE=1
+
+#solana-keygen new --no-passphrase -so validator-identity.json
+#solana-keygen new --no-passphrase -so validator-vote-account.json
+#solana-keygen new --no-passphrase -so validator-stake-account.json
+#solana-keygen new --no-passphrase -so faucet-keypair.json
+
+#solana-genesis \
+#--hashes-per-tick sleep \
+#--faucet-lamports 500000000000000000 \
+#--bootstrap-validator validator-identity.json \
+#validator-vote-account.json \
+#validator-stake-account.json \
+#--faucet-pubkey faucet-keypair.json \
+#--ledger test-ledger \
+#--cluster-type development
+
+#solana-test-validator --reset
+#solana-keygen new --no-passphrase -so faucet-keypair.json
+
+
