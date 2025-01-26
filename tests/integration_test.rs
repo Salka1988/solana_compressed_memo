@@ -19,6 +19,7 @@ mod tests {
     use std::sync::Mutex;
     use std::process;
     use std::{process::{Command, Stdio}, thread};
+    use std::fs::write;
 
     #[tokio::test]
     async fn test_create_compressed_memo_success() {
@@ -262,16 +263,14 @@ mod tests {
             Ok(())
         }
 
-        pub fn spawn_validator_thread(self) -> Result<thread::JoinHandle<()>, Box<dyn std::error::Error>> {
+        pub async fn spawn_validator_thread(self) -> Result<tokio::task::JoinHandle<()>, Box<dyn std::error::Error>> {
             let arc_self = Arc::new(self);
 
-            let handle = thread::spawn(move || {
-                arc_self
-                    .start_test_validator()
-                    .expect("Failed to start validator");
+            let handle = tokio::task::spawn_blocking(move || {
+                arc_self.start_test_validator().map_err(|e| eprintln!("{}", e)).unwrap();
             });
 
-            thread::sleep(std::time::Duration::from_secs(5)); // todo add backoff
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await; // todo add backoff
 
             Ok(handle)
         }
@@ -292,13 +291,12 @@ mod tests {
 
 
     fn build_bpf_program(project_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
-        // Verify the project directory exists
+
         if !Path::new(project_dir).exists() {
             return Err(format!("Project directory '{}' does not exist", project_dir).into());
         }
 
         println!("Building the BPF program locally in {}...", project_dir);
-
         let status = Command::new("cargo")
             .args(&["build-bpf", "--manifest-path", &format!("{}/Cargo.toml", project_dir)])
             .status()?;
@@ -311,20 +309,13 @@ mod tests {
         Ok(())
     }
 
+    fn deploy_program(project_dir: &str) -> Result<String, Box<dyn std::error::Error>> {
 
-    /// 3) Deploy the resulting `.so` to the validator.
-    ///    Assumes validator is listening on host port 8899.
-    ///    Adjust your RPC URL if using Docker Desktop or Linux networking.
-    fn deploy_program(project_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
-
-        // Verify the project directory exists
         if !Path::new(project_dir).exists() {
             return Err(format!("Project directory '{}' does not exist", project_dir).into());
         }
 
         println!("Ensuring a default keypair is created...");
-
-        // Create a default keypair if it doesn't exist
         let keypair_path = "~/.config/solana/id.json";
 
         // Check if the keypair file exists
@@ -382,7 +373,7 @@ mod tests {
         }
 
         // Deploy the program using the Solana CLI
-        let status = Command::new("solana")
+        let deploy_output = Command::new("solana")
             .args(&[
                 "program",
                 "deploy",
@@ -391,20 +382,32 @@ mod tests {
                 &so_path,
                 "--url",
                 rpc_url,
-            ])
-            .status()?;
+            ]).stdout(Stdio::piped())
+            .output()?;
 
-        if !status.success() {
-            return Err("Failed to deploy the program using Solana CLI.".into());
+        if !deploy_output.status.success() {
+            // In case of failure, attach stderr or stdout to the error message
+            let stderr = String::from_utf8_lossy(&deploy_output.stderr);
+            let stdout = String::from_utf8_lossy(&deploy_output.stdout);
+            return Err(format!("Failed to deploy the program.\nstdout:\n{}\nstderr:\n{}", stdout, stderr).into());
         }
 
+        let output_str = String::from_utf8_lossy(&deploy_output.stdout);
+        let program_id = output_str
+            .lines()
+            .find(|line| line.starts_with("Program Id:"))
+            .and_then(|line| line.split("Program Id:").nth(1)) // split into ["", " <ID>"]
+            .map(str::trim)                                    // remove surrounding whitespace
+            .map(ToString::to_string)                          // convert &str -> String
+            .ok_or("Failed to parse program ID from deployment output.")?;
+
+        println!("Program deployed successfully. Program ID: {}", program_id);
         println!("Program deployed successfully.");
-        Ok(())
+
+        Ok(program_id)
     }
 
-    /// 4) (Optional) Run a TypeScript test in a Node container.
-    ///    Example: `npm install && npx ts-node tests/test_compressed_memo.ts`.
-    fn run_typescript_test_locally(project_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
+    fn run_typescript_test_locally(project_dir: &str, program_id: &str) -> Result<(), Box<dyn std::error::Error>> {
         if !Path::new(project_dir).exists() {
             return Err(format!("Project directory '{}' does not exist", project_dir).into());
         }
@@ -423,8 +426,14 @@ mod tests {
         }
 
         {
-            let status = Command::new("npx")
-                .args(&["ts-node", "tests/ts/test_compressed_memo.ts"])
+            let status = Command::new("npm")
+                .args(&[
+                    "run",
+                    "ts-node", // Assuming you have an npm script for ts-node
+                    "--",
+                    "tests/ts/test_compressed_memo.ts",
+                    &format!("--program-id={}", program_id),
+                ])
                 .current_dir(project_dir)
                 .status()?;
 
@@ -451,23 +460,22 @@ mod tests {
     }
 
     /// Bring it all together in a single test.
-    #[test]
-    fn test_solana_program_fully_in_docker_via_commands() -> Result<(), Box<dyn std::error::Error>> {
+    #[tokio::test]
+    async fn test_solana_program_fully_in_docker_via_commands() -> Result<(), Box<dyn std::error::Error>> {
         let validator_container_name = TestValidator::new();
-        let handle = validator_container_name.spawn_validator_thread().expect("Failed to start validator");
+        let handle = validator_container_name.spawn_validator_thread().await?;
 
         let project_dir = std::env::current_dir()?.to_string_lossy().to_string();
         build_bpf_program(&project_dir)?;
 
-        deploy_program(&project_dir)?;
+        let program_id = deploy_program(&project_dir)?;
         println!("Program deployed.");
 
-        run_typescript_test_locally(&project_dir)?;
+        run_typescript_test_locally(&project_dir, &program_id)?;
 
         // 6) Cleanup
         // stop_and_remove_validator(&validator_container_name)?;
-        println!("Validator stopped & removed.");
-
+        // println!("Validator stopped & removed.");
 
         Ok(())
     }

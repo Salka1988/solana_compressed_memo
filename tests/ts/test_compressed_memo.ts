@@ -12,6 +12,7 @@ import {
     sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import { serialize } from "borsh";
+import * as fs from "node:fs";
 
 // ------------------ Borsh Layout for the Instruction (Example) ------------------ //
 /**
@@ -49,6 +50,18 @@ const InstructionSchema = new Map([
 ]);
 
 (async () => {
+
+    // 1) Read the Program ID from file
+    const args = process.argv.slice(2);
+    const programIdArg = args.find((arg) => arg.startsWith("--program-id="));
+    if (!programIdArg) {
+        throw new Error("Missing required --program-id argument.");
+    }
+
+    const programIdStr = programIdArg.split("=")[1];
+    const programId = new PublicKey(programIdStr);
+    console.log("Using Program ID:", programId.toBase58());
+
     // 1) Connect to local validator
     const connection = new Connection("http://127.0.0.1:8899", "confirmed");
 
@@ -60,7 +73,7 @@ const InstructionSchema = new Map([
 
     // 3) Prepare the Program and Accounts
     //    Replace this with your actual Program ID
-    const programId = new PublicKey("Fw6eh5oW7G8NdnkD4qDHWiQuGyZ1u48osomgJWBTfuTi");
+    // const programId = new PublicKey("Fw6eh5oW7G8NdnkD4qDHWiQuGyZ1u48osomgJWBTfuTi");
     const newAccount = Keypair.generate();
 
     // 4) Build Instruction Data (Borsh)
