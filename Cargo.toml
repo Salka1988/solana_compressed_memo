@@ -8,37 +8,36 @@ name = "extanded_spl"
 crate-type = ["cdylib", "lib"]
 
 [dependencies]
-solana-program = "1.18"
-solana-sdk = "1.18"
-solana-program-test = "1.18"
-light-sdk = { version = "0.11.0", features = ["account-compression"]}
+solana-program = "1.18.22"
 thiserror = "2.0.11"
 borsh = "1.5.4"
 light-sdk-macros = "0.4.0"
-signature = "1.6.4"
-borsh-derive = "1.5.4"
 light-hasher = "1.1.0"
 light-utils = "1.1.0"
-rand = "0.8.5"
-
-#bollard = { version = "0.16.1", features = ["native-tls"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 assert_matches = "1.5"       # For clean assertions
-#testcontainers = { version = "0.16", default-features = false }
-ctrlc = "3.4.5"
+solana-sdk = "1.18.22"
+solana-program-test = "1.18.22"
+light-sdk = { version = "0.11.0", features = ["account-compression"]}
+shellexpand = "3.1.0"
+ctrlc = { version = "3.4.5" }
+rand = { version = "0.8.5"}
 
 [features]
-no-entrypoint = []
+default = []
+
 
 #cargo install spl-token-cli --locked
 #cargo build-bpf --manifest-path <PATH_TO_YOUR_CARGO_TOML>
 #cargo build-bpf --manifest-path ./Cargo.toml
 #docker pull solanalabs/solana:v1.18.26
-#sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
+#sh -c "$(curl -sSfL https://release.solana.com/v1.18.22/install)" needed for light-hasher
 
-#export COPYFILE_DISABLE=1
+#export COPYFILE_DISABLE=1 needed for MacOS
+# version = 3 Cargo.lock has to be
+
 
 #solana-keygen new --no-passphrase -so validator-identity.json
 #solana-keygen new --no-passphrase -so validator-vote-account.json
@@ -58,4 +57,9 @@ no-entrypoint = []
 #solana-test-validator --reset
 #solana-keygen new --no-passphrase -so faucet-keypair.json
 
+#export CC=/usr/bin/clang
+#export CFLAGS="-isysroot $(xcrun --sdk macosx --show-sdk-path)"
+#cargo build-sbf
+
+#curl -qL https://www.npmjs.com/install.sh | sh
 

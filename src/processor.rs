@@ -19,6 +19,7 @@ use crate::{
 
 use light_hasher::{DataHasher, Poseidon};
 
+
 /// A simple struct that holds the memo. We'll derive LightHasher for it.
 #[derive(LightHasher)]
 pub struct CompressedMemo {
@@ -47,7 +48,7 @@ pub fn process_instruction(
 }
 
 fn process_original_memo(
-    accounts: &[AccountInfo],
+    _accounts: &[AccountInfo],
     memo: &str,
 ) -> ProgramResult {
     if memo.len() > MAX_MEMO_LEN {

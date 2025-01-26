@@ -6,7 +6,7 @@ use solana_program::{
 };
 use crate::processor::process_instruction;
 
-// entrypoint!(process);
+entrypoint!(process);
 
 fn process(
     program_id: &Pubkey,

@@ -1,4 +1,4 @@
-use borsh_derive::{BorshDeserialize, BorshSerialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub enum ExtendedSPLMemoInstruction {

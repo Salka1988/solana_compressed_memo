@@ -13,6 +13,12 @@ mod tests {
     use extanded_spl::instruction::ExtendedSPLMemoInstruction;
     use extanded_spl::processor::process_instruction;
     use extanded_spl::processor::CompressedMemo;
+    use std::path::Path;
+    use std::fs;
+    use std::sync::Arc;
+    use std::sync::Mutex;
+    use std::process;
+    use std::{process::{Command, Stdio}, thread};
 
     #[tokio::test]
     async fn test_create_compressed_memo_success() {
@@ -139,7 +145,6 @@ mod tests {
     }
 
 
-    use std::{process::{Command, Stdio}, io::{self, Read}, thread};
 
     /// Runs a command to completion and returns stdout on success, or an error if it fails.
     fn run_command_and_get_stdout(cmd: &mut Command) -> Result<String, Box<dyn std::error::Error>> {
@@ -162,107 +167,6 @@ mod tests {
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         Ok(stdout)
     }
-
-    /// 1) Start Solana Test Validator in a container (detached),
-    ///    mapping container port 8899 to host 8899, with `--reset`.
-    ///    Forces `--platform linux/amd64` for Apple Silicon compatibility.
-    // fn start_test_validator() -> Result<String, Box<dyn std::error::Error>> {
-    //     let container_name = "solana-validator";
-    //
-    //     // Attempt to remove any existing container with the same name todo add check
-    //     let _ = Command::new("docker")
-    //         .args(&["rm", "-f", container_name])
-    //         .status();
-    //
-    //     // Start container in detached mode
-    //     run_command_and_get_stdout(
-    //         Command::new("docker")
-    //             .args(&[
-    //                 "run",
-    //                 "--platform", "linux/amd64",   // Force AMD64 emulation on Apple Silicon
-    //                 "-d",                         // Detached mode
-    //                 "--name", container_name,
-    //                 "-p", "8899:8899",            // Map host 8899 to container 8899
-    //                 "solanalabs/solana:v1.18.26",
-    //                 "solana-test-validator",
-    //                 "--reset",
-    //             ])
-    //     )?;
-    //
-    //     // Optionally sleep/wait a bit or parse logs
-    //     std::thread::sleep(std::time::Duration::from_secs(5));
-    //
-    //     Ok(container_name.to_string())
-    // }
-
-    use std::fs;
-    use std::sync::Arc;
-    // fn start_test_validator() -> Result<(), Box<dyn std::error::Error>> {
-    //     let ledger_dir = "test-ledger";
-    //
-    //     // Remove previous ledger directory if it exists
-    //     if fs::metadata(ledger_dir).is_ok() {
-    //         println!("Removing existing ledger directory: {}", ledger_dir);
-    //         fs::remove_dir_all(ledger_dir)?;
-    //     }
-    //
-    //     // Generate keypairs
-    //     let keypairs = [
-    //         ("validator-identity.json", "Validator Identity"),
-    //         ("validator-vote-account.json", "Validator Vote Account"),
-    //         ("validator-stake-account.json", "Validator Stake Account"),
-    //         ("faucet-keypair.json", "Faucet Keypair"),
-    //     ];
-    //
-    //     for (file, description) in &keypairs {
-    //         println!("Generating {} keypair...", description);
-    //         let status = Command::new("solana-keygen")
-    //             .args(&["new", "--no-passphrase", "-so", file])
-    //             .status()?;
-    //
-    //         if !status.success() {
-    //             return Err(format!("Failed to generate {} keypair.", description).into());
-    //         }
-    //     }
-    //
-    //     // Create the genesis ledger
-    //     println!("Creating genesis ledger...");
-    //     let status = Command::new("solana-genesis")
-    //         .args(&[
-    //             "--hashes-per-tick", "sleep",
-    //             "--faucet-lamports", "500000000000000000",
-    //             "--bootstrap-validator", "validator-identity.json",
-    //             "validator-vote-account.json",
-    //             "validator-stake-account.json",
-    //             "--faucet-pubkey", "faucet-keypair.json",
-    //             "--ledger", ledger_dir,
-    //             "--cluster-type", "development",
-    //         ])
-    //         .status()?;
-    //
-    //     if !status.success() {
-    //         return Err("Failed to create genesis ledger.".into());
-    //     }
-    //
-    //     // Start the Solana Test Validator
-    //     println!("Starting Solana Test Validator...");
-    //     let status = Command::new("solana-test-validator")
-    //         .args(&["--reset"])
-    //         .status()?;
-    //
-    //     if !status.success() {
-    //         return Err("Failed to start Solana Test Validator.".into());
-    //     }
-    //
-    //     println!("Solana Test Validator is running with ledger: {}", ledger_dir);
-    //
-    //     Ok(())
-    // }
-
-
-    use std::sync::Mutex;
-    use std::process;
-    use tokio::task::JoinHandle;
 
     pub struct TestValidator {
         ledger_dir: Arc<Mutex<String>>,
@@ -387,80 +291,149 @@ mod tests {
     }
 
 
-
-
-    /// 2) Build the BPF program using another ephemeral container.
-    ///    Mount the local project directory so it can run `cargo build-bpf`.
     fn build_bpf_program(project_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
-        run_command_and_get_stdout(
-            Command::new("docker")
-                .args(&[
-                    "run",
-                    "--platform", "linux/amd64",  // Force AMD64 on Apple Silicon
-                    "--rm",                       // Remove container when done
-                    "-v", &format!("{}:/project:rw,z", project_dir),
-                    "-w", "/project",
-                    "solanalabs/solana:v1.18.26",
-                    // "cargo", "build-bpf",
-                    // "--manifest-path", "/project/Cargo.toml",
-                    "solana-build",
-                ])
-        )?;
+        // Verify the project directory exists
+        if !Path::new(project_dir).exists() {
+            return Err(format!("Project directory '{}' does not exist", project_dir).into());
+        }
 
+        println!("Building the BPF program locally in {}...", project_dir);
+
+        let status = Command::new("cargo")
+            .args(&["build-bpf", "--manifest-path", &format!("{}/Cargo.toml", project_dir)])
+            .status()?;
+
+        if !status.success() {
+            return Err("Failed to build BPF program locally".into());
+        }
+
+        println!("BPF build done at: {}", project_dir);
         Ok(())
     }
+
 
     /// 3) Deploy the resulting `.so` to the validator.
     ///    Assumes validator is listening on host port 8899.
     ///    Adjust your RPC URL if using Docker Desktop or Linux networking.
     fn deploy_program(project_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
-        // For Docker Desktop on macOS/Windows, "host.docker.internal" often works.
-        // On Linux, you might need to use "127.0.0.1" or run with `--network host`.
-        let rpc_url = "http://host.docker.internal:8899";
 
-        // The `.so` is typically found at /project/target/deploy/extanded_spl.so
-        let so_path = "/project/target/deploy/extanded_spl.so";
+        // Verify the project directory exists
+        if !Path::new(project_dir).exists() {
+            return Err(format!("Project directory '{}' does not exist", project_dir).into());
+        }
 
-        run_command_and_get_stdout(
-            Command::new("docker")
-                .args(&[
-                    "run",
-                    "--platform", "linux/amd64",
-                    "--rm",
-                    "-v", &format!("{}:/project", project_dir),
-                    "-w", "/project",
-                    "solanalabs/solana:v1.18.26",
-                    "solana",
-                    "program",
-                    "deploy",
-                    so_path,
-                    "--url",
-                    rpc_url,
-                ])
-        )?;
+        println!("Ensuring a default keypair is created...");
+
+        // Create a default keypair if it doesn't exist
+        let keypair_path = "~/.config/solana/id.json";
+
+        // Check if the keypair file exists
+        if !Path::new(&keypair_path).exists() {
+            println!("Creating default keypair...");
+            let status = Command::new("solana-keygen")
+                .args(&["new", "--no-passphrase", "-o", &keypair_path])
+                .status()?;
+
+            if !status.success() {
+                return Err("Failed to create default Solana keypair.".into());
+            }
+
+            println!("Default keypair created successfully.");
+        } else {
+            println!("Default keypair already created.");
+        }
+
+        let output = Command::new("solana")
+            .args(["address", "-k", keypair_path])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit())
+            .output()?;
+
+        if !output.status.success() {
+            return Err("Failed to read keypair address with `solana address`".into());
+        }
+
+        let pubkey = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+        let status = Command::new("solana")
+            .args([
+                "airdrop",
+                "10",
+                &pubkey,
+                "--url", "http://127.0.0.1:8899",
+            ])
+            .status()?;
+
+        if !status.success() {
+            return Err("Failed to airdrop SOL to the new wallet".into());
+        }
+
+        println!("Deploying the program using local Solana CLI tools...");
+
+        // Define the RPC URL and the path to the program's `.so` file
+        let rpc_url = "http://127.0.0.1:8899";
+        let so_path = format!("{}/target/deploy/extanded_spl.so", project_dir);
+
+        println!("Deploying program at: {}", so_path);
+
+        // Check if the `.so` file exists
+        if !Path::new(&so_path).exists() {
+            return Err(format!("Program file '{}' does not exist. Build the program first.", so_path).into());
+        }
+
+        // Deploy the program using the Solana CLI
+        let status = Command::new("solana")
+            .args(&[
+                "program",
+                "deploy",
+                "--keypair",
+                &keypair_path,
+                &so_path,
+                "--url",
+                rpc_url,
+            ])
+            .status()?;
+
+        if !status.success() {
+            return Err("Failed to deploy the program using Solana CLI.".into());
+        }
+
+        println!("Program deployed successfully.");
         Ok(())
     }
 
     /// 4) (Optional) Run a TypeScript test in a Node container.
     ///    Example: `npm install && npx ts-node tests/test_compressed_memo.ts`.
-    fn run_typescript_test(project_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let rpc_url = "http://host.docker.internal:8899"; // Example
-        let ts_script = "tests/test_compressed_memo.ts";
+    fn run_typescript_test_locally(project_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
+        if !Path::new(project_dir).exists() {
+            return Err(format!("Project directory '{}' does not exist", project_dir).into());
+        }
 
-        run_command_and_get_stdout(
-            Command::new("docker")
-                .args(&[
-                    "run",
-                    "--platform", "linux/amd64",
-                    "--rm",
-                    "-v", &format!("{}:/project", project_dir),
-                    "-w", "/project",
-                    "node:18-alpine",
-                    "sh",
-                    "-c",
-                    &format!("npm install && npx ts-node {}", ts_script),
-                ])
-        )?;
+        println!("Running local TypeScript test in {}...", project_dir);
+
+        {
+            let status = Command::new("npm")
+                .args(&["install"])
+                .current_dir(project_dir)
+                .status()?;
+
+            if !status.success() {
+                return Err("npm install failed".into());
+            }
+        }
+
+        {
+            let status = Command::new("npx")
+                .args(&["ts-node", "tests/ts/test_compressed_memo.ts"])
+                .current_dir(project_dir)
+                .status()?;
+
+            if !status.success() {
+                return Err("ts-node test script failed".into());
+            }
+        }
+
+        println!("TypeScript test completed successfully (locally).");
         Ok(())
     }
 
@@ -480,29 +453,21 @@ mod tests {
     /// Bring it all together in a single test.
     #[test]
     fn test_solana_program_fully_in_docker_via_commands() -> Result<(), Box<dyn std::error::Error>> {
-        // 1) Start the validator
         let validator_container_name = TestValidator::new();
-        validator_container_name.spawn_validator_thread().expect("Failed to start validator");
+        let handle = validator_container_name.spawn_validator_thread().expect("Failed to start validator");
 
-
-        // 2) The local path to your Solana program project
         let project_dir = std::env::current_dir()?.to_string_lossy().to_string();
-
-        // // 3) Build BPF program
         build_bpf_program(&project_dir)?;
-        println!("BPF build done.");
-        //
-        // 4) Deploy program to validator
-        // deploy_program(&project_dir)?;
-        // println!("Program deployed.");
 
-        // 5) (Optional) Run TypeScript test
-        //    Uncomment to run TS logic
-        // run_typescript_test(&project_dir)?;
+        deploy_program(&project_dir)?;
+        println!("Program deployed.");
+
+        run_typescript_test_locally(&project_dir)?;
 
         // 6) Cleanup
         // stop_and_remove_validator(&validator_container_name)?;
         println!("Validator stopped & removed.");
+
 
         Ok(())
     }
