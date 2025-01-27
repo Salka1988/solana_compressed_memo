@@ -29,38 +29,10 @@ rand = { version = "0.8.5"}
 [features]
 default = []
 
-
-#cargo install spl-token-cli --locked
-#cargo build-bpf --manifest-path <PATH_TO_YOUR_CARGO_TOML>
-#cargo build-bpf --manifest-path ./Cargo.toml
-#docker pull solanalabs/solana:v1.18.26
 #sh -c "$(curl -sSfL https://release.solana.com/v1.18.22/install)" needed for light-hasher
-
 #export COPYFILE_DISABLE=1 needed for MacOS
 # version = 3 Cargo.lock has to be
-
-
-#solana-keygen new --no-passphrase -so validator-identity.json
-#solana-keygen new --no-passphrase -so validator-vote-account.json
-#solana-keygen new --no-passphrase -so validator-stake-account.json
-#solana-keygen new --no-passphrase -so faucet-keypair.json
-
-#solana-genesis \
-#--hashes-per-tick sleep \
-#--faucet-lamports 500000000000000000 \
-#--bootstrap-validator validator-identity.json \
-#validator-vote-account.json \
-#validator-stake-account.json \
-#--faucet-pubkey faucet-keypair.json \
-#--ledger test-ledger \
-#--cluster-type development
-
-#solana-test-validator --reset
-#solana-keygen new --no-passphrase -so faucet-keypair.json
-
 #export CC=/usr/bin/clang
 #export CFLAGS="-isysroot $(xcrun --sdk macosx --show-sdk-path)"
-#cargo build-sbf
-
 #curl -qL https://www.npmjs.com/install.sh | sh
 
