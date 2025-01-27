@@ -1,0 +1,7 @@
+/target
+/package-lock.json
+/node_modules
+*.log
+*.sst
+test-ledger-*/
+~/.config/solana/

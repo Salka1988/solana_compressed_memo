@@ -1,0 +1,38 @@
+[package]
+name = "extanded_spl"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "extanded_spl"
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+solana-program = "1.18.22"
+thiserror = "2.0.11"
+borsh = "1.5.4"
+light-sdk-macros = "0.4.0"
+light-hasher = "1.1.0"
+light-utils = "1.1.0"
+anyhow = "1.0.95"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+assert_matches = "1.5"       # For clean assertions
+solana-sdk = "1.18.22"
+solana-program-test = "1.18.22"
+light-sdk = { version = "0.11.0", features = ["account-compression"]}
+shellexpand = "3.1.0"
+ctrlc = { version = "3.4.5" }
+rand = { version = "0.8.5"}
+
+[features]
+default = []
+
+#sh -c "$(curl -sSfL https://release.solana.com/v1.18.22/install)" needed for light-hasher
+#export COPYFILE_DISABLE=1 needed for MacOS
+# version = 3 Cargo.lock has to be
+#export CC=/usr/bin/clang
+#export CFLAGS="-isysroot $(xcrun --sdk macosx --show-sdk-path)"
+#curl -qL https://www.npmjs.com/install.sh | sh
+
