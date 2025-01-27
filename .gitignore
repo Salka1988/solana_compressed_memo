@@ -4,3 +4,4 @@
 *.log
 *.sst
 test-ledger-*/
+~/.config/solana/
