@@ -351,28 +351,47 @@ mod tests {
             let child = Command::new("solana-test-validator")
                 .args(["--reset", "--ledger", &unique_dir])
                 .stdout(Stdio::null()) // Suppress standard output
-                .stderr(Stdio::null()) // Suppress standard error
+                .stderr(Stdio::inherit()) // Suppress standard error
                 .spawn()
                 .map_err(|e| anyhow!("Failed to start solana-test-validator: {}", e))?;
 
+            // this should be some primitive backoff mechanism
+            for attempt in 1..=10 {
+                if let Ok(output) = Command::new("solana")
+                    .args(["cluster-version", "--url", "http://127.0.0.1:8899"])
+                    .stderr(Stdio::piped()) // Capture stderr
+                    .output()
+                {
+                    if output.status.success() {
+                        println!("Solana Test Validator is ready.");
+                        break;
+                    } else {
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        eprintln!(
+                            "Attempt {}: Solana Test Validator is not ready. Error: {}",
+                            attempt, stderr
+                        );
+                    }
+                } else {
+                    eprintln!("Attempt {}: Failed to execute readiness check.", attempt);
+                }
+
+                if attempt == 10 {
+                    eprintln!("Terminating Solana Test Validator due to readiness failure.");
+                    return Err(anyhow!(
+                        "Solana Test Validator did not become ready after 10 attempts."
+                    ));
+                }
+
+                std::thread::sleep(std::time::Duration::from_secs(2));
+            }
+            
             println!(
                 "Solana Test Validator is running with ledger: {}",
                 unique_dir
             );
-            self.child = Some(child);
 
-            // this should be some primitive backoff mechanism
-            for _ in 0..10 {
-                if Command::new("solana")
-                    .args(["cluster-version", "--url", "http://127.0.0.1:8899"])
-                    .status()
-                    .is_ok()
-                {
-                    println!("Solana Test Validator is ready.");
-                    break;
-                }
-                std::thread::sleep(std::time::Duration::from_secs(2));
-            }
+            self.child = Some(child);
 
             Ok(())
         }
