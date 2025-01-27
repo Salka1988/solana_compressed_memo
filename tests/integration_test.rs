@@ -18,18 +18,15 @@ mod tests {
     use std::path::Path;
     use std::process;
     use std::process::Child;
+    use std::process::{Command, Stdio};
     use std::sync::Arc;
     use std::sync::Mutex;
-    use std::{
-        process::{Command, Stdio},
-    };
 
     #[tokio::test]
     async fn test_create_compressed_memo_success() {
         let program_id = Pubkey::new_unique();
 
-        let mut test =
-            ProgramTest::new("extended_spl", program_id, processor!(process_instruction));
+        let test = ProgramTest::new("extended_spl", program_id, processor!(process_instruction));
 
         let (mut banks_client, payer, recent_blockhash) = test.start().await;
         let new_account = Keypair::new();
@@ -74,8 +71,7 @@ mod tests {
     async fn test_create_compressed_memo_max_length() {
         let program_id = Pubkey::new_unique();
 
-        let mut test =
-            ProgramTest::new("extanded_spl", program_id, processor!(process_instruction));
+        let test = ProgramTest::new("extanded_spl", program_id, processor!(process_instruction));
 
         let (mut banks_client, payer, recent_blockhash) = test.start().await;
         let new_account = Keypair::new();
@@ -116,8 +112,7 @@ mod tests {
     async fn test_create_compressed_memo_exceed_max_length() {
         let program_id = Pubkey::new_unique();
 
-        let mut test =
-            ProgramTest::new("extanded_spl", program_id, processor!(process_instruction));
+        let test = ProgramTest::new("extanded_spl", program_id, processor!(process_instruction));
 
         let (mut banks_client, payer, recent_blockhash) = test.start().await;
         let new_account = Keypair::new();
@@ -149,116 +144,6 @@ mod tests {
         );
     }
 
-    // pub struct TestValidator {
-    //     ledger_dir: Arc<Mutex<String>>,
-    // }
-    //
-    // impl TestValidator {
-    //     pub fn new() -> Self {
-    //         let ledger_dir = Arc::new(Mutex::new(String::from("test-ledger")));
-    //         let ledger_dir_clone = Arc::clone(&ledger_dir);
-    //
-    //         ctrlc::set_handler(move || {
-    //             println!("Interrupt signal received, cleaning up...");
-    //             if let Ok(dir) = ledger_dir_clone.lock() {
-    //                 TestValidator::cleanup_dir(&dir);
-    //             }
-    //             std::process::exit(0);
-    //         })
-    //             .expect("Error setting Ctrl+C handler");
-    //
-    //         Self { ledger_dir }
-    //     }
-    //
-    //     fn cleanup_dir(dir: &str) {
-    //         if Path::new(dir).exists() {
-    //             if let Err(e) = fs::remove_dir_all(dir) {
-    //                 eprintln!("Failed to remove ledger directory '{}': {}", dir, e);
-    //             } else {
-    //                 println!("Cleaned up ledger directory: {}", dir);
-    //             }
-    //         }
-    //     }
-    //
-    //     fn start_test_validator(&self) -> Result<Child, anyhow::Error> {
-    //         let unique_dir = {
-    //             let mut dir = self.ledger_dir.lock().map_err(|e| anyhow::anyhow!(e.to_string()))?;
-    //             let new_dir = format!("test-ledger-{}", rand::random::<u32>());
-    //             *dir = new_dir.clone();
-    //             new_dir
-    //         };
-    //
-    //         println!("Created test directory: {}", unique_dir);
-    //
-    //         for (file, desc) in [
-    //             ("validator-identity.json", "Validator Identity"),
-    //             ("validator-vote-account.json", "Validator Vote Account"),
-    //             ("validator-stake-account.json", "Validator Stake Account"),
-    //             ("faucet-keypair.json", "Faucet Keypair"),
-    //         ] {
-    //             let path = format!("{}/{}", unique_dir, file);
-    //             println!("Generating keypair: {}", path);
-    //             if !Command::new("solana-keygen")
-    //                 .args(&["new", "--no-passphrase", "-so", &path])
-    //                 .status()
-    //                 .map_err(|e| anyhow::anyhow!("Failed to run solana-keygen: {}", e))?
-    //                 .success()
-    //             {
-    //                 return Err(anyhow::anyhow!("Failed to generate {} keypair.", desc));
-    //             }
-    //         }
-    //
-    //         println!("Creating genesis ledger...");
-    //         if !Command::new("solana-genesis")
-    //             .args(&[
-    //                 "--hashes-per-tick", "sleep",
-    //                 "--faucet-lamports", "500000000000000000",
-    //                 "--bootstrap-validator",
-    //                 &format!("{}/validator-identity.json", unique_dir),
-    //                 &format!("{}/validator-vote-account.json", unique_dir),
-    //                 &format!("{}/validator-stake-account.json", unique_dir),
-    //                 "--faucet-pubkey",
-    //                 &format!("{}/faucet-keypair.json", unique_dir),
-    //                 "--ledger", &unique_dir,
-    //                 "--cluster-type", "development",
-    //             ])
-    //             .status()
-    //             .map_err(|e| anyhow::anyhow!("Failed to run solana-genesis: {}", e))?
-    //             .success()
-    //         {
-    //             return Err(anyhow::anyhow!("Failed to create genesis ledger."));
-    //         }
-    //
-    //         println!("Starting Solana Test Validator...");
-    //         let child = Command::new("solana-test-validator")
-    //             .args(&["--reset", "--ledger", &unique_dir])
-    //             .spawn()
-    //             .map_err(|e| anyhow::anyhow!("Failed to start solana-test-validator: {}", e))?;
-    //
-    //         println!("Solana Test Validator is running with ledger: {}", unique_dir);
-    //         Ok(child)
-    //     }
-    //
-    //     pub async fn spawn_validator_thread(self) -> anyhow::Result<Child> {
-    //         let arc_self = Arc::new(self);
-    //         let child = tokio::task::spawn_blocking(move || arc_self.start_test_validator())
-    //             .await?
-    //             .map_err(|e| anyhow::anyhow!(e))?;
-    //
-    //         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-    //         Ok(child)
-    //     }
-    // }
-    //
-    //
-    // impl Drop for TestValidator {
-    //     fn drop(&mut self) {
-    //         if let Ok(dir) = self.ledger_dir.lock() {
-    //             TestValidator::cleanup_dir(&dir);
-    //         }
-    //     }
-    // }
-    //
     fn build_bpf_program(project_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
         if !Path::new(project_dir).exists() {
             return Err(format!("Project directory '{}' does not exist", project_dir).into());
@@ -266,7 +151,13 @@ mod tests {
 
         println!("Building the BPF program in {}...", project_dir);
         if !Command::new("cargo")
-            .args(&["build-bpf", "--manifest-path", &format!("{}/Cargo.toml", project_dir)])
+            .args([
+                "build-bpf",
+                "--manifest-path",
+                &format!("{}/Cargo.toml", project_dir),
+            ])
+            .stdout(Stdio::null()) // Suppress standard output
+            .stderr(Stdio::null()) // Suppress standard error
             .status()?
             .success()
         {
@@ -288,7 +179,7 @@ mod tests {
         if !Path::new(keypair_path).exists() {
             println!("Creating default keypair...");
             if !Command::new("solana-keygen")
-                .args(&["new", "--no-passphrase", "-o", keypair_path])
+                .args(["new", "--no-passphrase", "-o", keypair_path])
                 .status()?
                 .success()
             {
@@ -302,8 +193,8 @@ mod tests {
                 .output()?
                 .stdout,
         )
-            .trim()
-            .to_string();
+        .trim()
+        .to_string();
 
         Command::new("solana")
             .args(["airdrop", "10", &pubkey, "--url", "http://127.0.0.1:8899"])
@@ -316,7 +207,13 @@ mod tests {
 
         let deploy_output = Command::new("solana")
             .args([
-                "program", "deploy", "--keypair", keypair_path, &so_path, "--url", "http://127.0.0.1:8899",
+                "program",
+                "deploy",
+                "--keypair",
+                keypair_path,
+                &so_path,
+                "--url",
+                "http://127.0.0.1:8899",
             ])
             .output()?;
 
@@ -333,7 +230,10 @@ mod tests {
         Ok(program_id)
     }
 
-    fn run_typescript_test_locally(project_dir: &str, program_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+    fn run_typescript_test_locally(
+        project_dir: &str,
+        program_id: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if !Path::new(project_dir).exists() {
             return Err(format!("Project directory '{}' does not exist", project_dir).into());
         }
@@ -343,31 +243,21 @@ mod tests {
             .current_dir(project_dir)
             .status()?;
 
-        Command::new("npm")
-            .args(["run", "ts-node", "--", "tests/ts/test_compressed_memo.ts", &format!("--program-id={}", program_id)])
+        Command::new("npx")
+            .args([
+                "mocha",
+                "-r",
+                "ts-node/register",
+                "tests/ts/test_compressed_memo.ts",
+                "--",
+                &format!("--program-id={}", program_id),
+            ])
             .current_dir(project_dir)
             .status()?;
 
         println!("TypeScript test completed.");
         Ok(())
     }
-    //
-    // #[tokio::test]
-    // async fn test_solana_program_fully_in_docker_via_commands() -> Result<(), Box<dyn std::error::Error>> {
-    //     let validator = TestValidator::new();
-    //     let mut child = validator.spawn_validator_thread().await?;
-    //
-    //     let project_dir = std::env::current_dir()?.to_string_lossy().to_string();
-    //     build_bpf_program(&project_dir)?;
-    //
-    //     let program_id = deploy_program(&project_dir)?;
-    //     run_typescript_test_locally(&project_dir, &program_id)?;
-    //
-    //     println!("Killing the test validator...");
-    //     child.kill()?;
-    //     child.wait()?;
-    //     Ok(())
-    // }
 
     pub struct TestValidator {
         ledger_dir: Arc<Mutex<String>>,
@@ -386,7 +276,7 @@ mod tests {
                 }
                 process::exit(0);
             })
-                .expect("Error setting Ctrl+C handler");
+            .expect("Error setting Ctrl+C handler");
 
             Self {
                 ledger_dir,
@@ -423,7 +313,7 @@ mod tests {
                 let path = format!("{}/{}", unique_dir, file);
                 println!("Generating keypair: {}", path);
                 if !Command::new("solana-keygen")
-                    .args(&["new", "--no-passphrase", "-so", &path])
+                    .args(["new", "--no-passphrase", "-so", &path])
                     .status()
                     .map_err(|e| anyhow!("Failed to run solana-keygen: {}", e))?
                     .success()
@@ -434,17 +324,21 @@ mod tests {
 
             println!("Creating genesis ledger...");
             if !Command::new("solana-genesis")
-                .args(&[
-                    "--hashes-per-tick", "sleep",
-                    "--faucet-lamports", "500000000000000000",
+                .args([
+                    "--hashes-per-tick",
+                    "sleep",
+                    "--faucet-lamports",
+                    "500000000000000000",
                     "--bootstrap-validator",
                     &format!("{}/validator-identity.json", unique_dir),
                     &format!("{}/validator-vote-account.json", unique_dir),
                     &format!("{}/validator-stake-account.json", unique_dir),
                     "--faucet-pubkey",
                     &format!("{}/faucet-keypair.json", unique_dir),
-                    "--ledger", &unique_dir,
-                    "--cluster-type", "development",
+                    "--ledger",
+                    &unique_dir,
+                    "--cluster-type",
+                    "development",
                 ])
                 .status()
                 .map_err(|e| anyhow!("Failed to run solana-genesis: {}", e))?
@@ -455,11 +349,16 @@ mod tests {
 
             println!("Starting Solana Test Validator...");
             let child = Command::new("solana-test-validator")
-                .args(&["--reset", "--ledger", &unique_dir])
+                .args(["--reset", "--ledger", &unique_dir])
+                .stdout(Stdio::null()) // Suppress standard output
+                .stderr(Stdio::null()) // Suppress standard error
                 .spawn()
                 .map_err(|e| anyhow!("Failed to start solana-test-validator: {}", e))?;
 
-            println!("Solana Test Validator is running with ledger: {}", unique_dir);
+            println!(
+                "Solana Test Validator is running with ledger: {}",
+                unique_dir
+            );
             self.child = Some(child);
 
             // this should be some primitive backoff mechanism
@@ -503,7 +402,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_solana_program_fully_in_docker_via_commands() -> Result<(), Box<dyn std::error::Error>> {
+    async fn test_solana_program_fully_in_docker_via_commands(
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let mut validator = TestValidator::new();
         validator.spawn_validator_thread().await?;
 
@@ -516,8 +416,4 @@ mod tests {
         // Cleanup happens automatically when `validator` goes out of scope
         Ok(())
     }
-
-
-
-
 }
