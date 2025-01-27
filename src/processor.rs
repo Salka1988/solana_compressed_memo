@@ -4,7 +4,7 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     msg,
-    program::{invoke},
+    program::invoke,
     program_error::ProgramError,
     pubkey::Pubkey,
     rent::Rent,
@@ -12,13 +12,9 @@ use solana_program::{
     sysvar::Sysvar,
 };
 
-use crate::{
-    error::ExtendedSPLMemoError,
-    instruction::ExtendedSPLMemoInstruction,
-};
+use crate::{error::ExtendedSPLMemoError, instruction::ExtendedSPLMemoInstruction};
 
 use light_hasher::{DataHasher, Poseidon};
-
 
 /// A simple struct that holds the memo. We'll derive LightHasher for it.
 #[derive(LightHasher)]
@@ -38,19 +34,14 @@ pub fn process_instruction(
         .map_err(|_| ExtendedSPLMemoError::InvalidInstruction)?;
 
     match instruction {
-        ExtendedSPLMemoInstruction::OriginalMemo { memo } => {
-            process_original_memo(accounts, &memo)
-        }
+        ExtendedSPLMemoInstruction::OriginalMemo { memo } => process_original_memo(accounts, &memo),
         ExtendedSPLMemoInstruction::CreateCompressedMemo { memo } => {
             process_create_compressed_memo(program_id, accounts, &memo)
         }
     }
 }
 
-fn process_original_memo(
-    _accounts: &[AccountInfo],
-    memo: &str,
-) -> ProgramResult {
+fn process_original_memo(_accounts: &[AccountInfo], memo: &str) -> ProgramResult {
     if memo.len() > MAX_MEMO_LEN {
         return Err(ExtendedSPLMemoError::MemoTooLong.into());
     }
@@ -82,7 +73,9 @@ fn process_create_compressed_memo(
     };
 
     // Derive-macro provided .hash() => typically returns a [u8; 32] and use Poseidon hasher
-    let hashed_data = compressed_memo_struct.hash::<Poseidon>().map_err(|_| ExtendedSPLMemoError::HashingError)?;
+    let hashed_data = compressed_memo_struct
+        .hash::<Poseidon>()
+        .map_err(|_| ExtendedSPLMemoError::HashingError)?;
 
     // Create the account if it's not already
     if new_account_info.data_is_empty() {
@@ -96,13 +89,7 @@ fn process_create_compressed_memo(
             hashed_data.len() as u64,
             program_id,
         );
-        invoke(
-            &create_ix,
-            &[
-                payer_info.clone(),
-                new_account_info.clone(),
-            ],
-        )?;
+        invoke(&create_ix, &[payer_info.clone(), new_account_info.clone()])?;
     }
 
     // Write the hashed data to the new account

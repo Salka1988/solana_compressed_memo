@@ -1,7 +1,4 @@
-/**
- * Run this script via:
- *    npx ts-node tests/test_compressed_memo.ts
- */
+
 import {
     Connection,
     Keypair,
@@ -11,20 +8,10 @@ import {
     SystemProgram,
     sendAndConfirmTransaction,
 } from "@solana/web3.js";
-import { serialize } from "borsh";
+import {deserialize, serialize} from "borsh";
 import * as fs from "node:fs";
 
-// ------------------ Borsh Layout for the Instruction (Example) ------------------ //
-/**
- * Suppose your Rust's ExtendedSPLMemoInstruction::CreateCompressedMemo
- * is Borsh-serialized as:
- *
- *   enumTag (u8)  -> for CreateCompressedMemo
- *   memoLen (u32) -> length of memo
- *   memoBytes (u8[]) -> the memo string
- *
- * Adjust this schema to match exactly how your Rust code serializes instructions!
- */
+
 class CreateCompressedMemoLayout {
     enumTag: number;
     memo: string;
@@ -35,7 +22,6 @@ class CreateCompressedMemoLayout {
     }
 }
 
-// A Borsh schema for the instruction data.
 const InstructionSchema = new Map([
     [
         CreateCompressedMemoLayout,
@@ -51,7 +37,7 @@ const InstructionSchema = new Map([
 
 (async () => {
 
-    // 1) Read the Program ID from file
+    // 0) Read the Program ID from file
     const args = process.argv.slice(2);
     const programIdArg = args.find((arg) => arg.startsWith("--program-id="));
     if (!programIdArg) {
@@ -122,6 +108,22 @@ const InstructionSchema = new Map([
         console.log("Success: The account data is 32 bytes as expected!");
     } else {
         console.warn("Unexpected account data length, got:", newAcctInfo.data.length);
+    }
+
+    // 9) Decrypt the memoStr from serialized data
+    const deserializedInstruction = deserialize(
+        InstructionSchema,
+        CreateCompressedMemoLayout,
+        Buffer.from(serializedData)
+    );
+
+    if (
+        deserializedInstruction.enumTag === instructionData.enumTag &&
+        deserializedInstruction.memo === instructionData.memo
+    ) {
+        console.log("Success: deserializedInstruction is equivalent to instructionData");
+    } else {
+        console.warn("Failed: deserializedInstruction is not equivalent to instructionData");
     }
 
     console.log("TypeScript test completed successfully.");

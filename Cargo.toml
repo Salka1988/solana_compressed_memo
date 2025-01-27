@@ -14,6 +14,7 @@ borsh = "1.5.4"
 light-sdk-macros = "0.4.0"
 light-hasher = "1.1.0"
 light-utils = "1.1.0"
+anyhow = "1.0.95"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

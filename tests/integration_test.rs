@@ -1,35 +1,35 @@
 #[cfg(test)]
 mod tests {
+    use anyhow::anyhow;
+    use extanded_spl::instruction::ExtendedSPLMemoInstruction;
+    use extanded_spl::processor::process_instruction;
+    use extanded_spl::processor::CompressedMemo;
+    use light_hasher::{DataHasher, Poseidon};
+    use solana_program::instruction::InstructionError;
     use solana_program_test::*;
+    use solana_sdk::transaction::TransactionError;
     use solana_sdk::{
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
         signature::{Keypair, Signer},
         transaction::Transaction,
     };
-    use light_hasher::{DataHasher, Poseidon};
-    use solana_program::instruction::InstructionError;
-    use solana_sdk::transaction::TransactionError;
-    use extanded_spl::instruction::ExtendedSPLMemoInstruction;
-    use extanded_spl::processor::process_instruction;
-    use extanded_spl::processor::CompressedMemo;
-    use std::path::Path;
     use std::fs;
+    use std::path::Path;
+    use std::process;
+    use std::process::Child;
     use std::sync::Arc;
     use std::sync::Mutex;
-    use std::process;
-    use std::{process::{Command, Stdio}, thread};
-    use std::fs::write;
+    use std::{
+        process::{Command, Stdio},
+    };
 
     #[tokio::test]
     async fn test_create_compressed_memo_success() {
         let program_id = Pubkey::new_unique();
 
-        let mut test = ProgramTest::new(
-            "extended_spl",
-            program_id,
-            processor!(process_instruction),
-        );
+        let mut test =
+            ProgramTest::new("extended_spl", program_id, processor!(process_instruction));
 
         let (mut banks_client, payer, recent_blockhash) = test.start().await;
         let new_account = Keypair::new();
@@ -39,11 +39,15 @@ mod tests {
             memo: memo_str.to_string(),
         };
 
-        let instruction = Instruction::new_with_borsh(program_id, &ix_data,vec![
-            AccountMeta::new(payer.pubkey(), true),
-            AccountMeta::new(new_account.pubkey(), true),
-            AccountMeta::new_readonly(solana_program::system_program::ID, false), // Add the system program
-        ]);
+        let instruction = Instruction::new_with_borsh(
+            program_id,
+            &ix_data,
+            vec![
+                AccountMeta::new(payer.pubkey(), true),
+                AccountMeta::new(new_account.pubkey(), true),
+                AccountMeta::new_readonly(solana_program::system_program::ID, false), // Add the system program
+            ],
+        );
 
         let mut tx = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
         tx.sign(&[&payer, &new_account], recent_blockhash);
@@ -61,7 +65,7 @@ mod tests {
         let expected_hash = CompressedMemo {
             memo: memo_str.to_string(),
         }
-            .hash::<Poseidon>();
+        .hash::<Poseidon>();
 
         assert_eq!(acct_data.data[..32], expected_hash.expect("BD"));
     }
@@ -70,11 +74,8 @@ mod tests {
     async fn test_create_compressed_memo_max_length() {
         let program_id = Pubkey::new_unique();
 
-        let mut test = ProgramTest::new(
-            "extanded_spl",
-            program_id,
-            processor!(process_instruction),
-        );
+        let mut test =
+            ProgramTest::new("extanded_spl", program_id, processor!(process_instruction));
 
         let (mut banks_client, payer, recent_blockhash) = test.start().await;
         let new_account = Keypair::new();
@@ -84,11 +85,15 @@ mod tests {
             memo: memo_str.to_string(),
         };
 
-        let instruction = Instruction::new_with_borsh(program_id, &ix_data,vec![
-            AccountMeta::new(payer.pubkey(), true),
-            AccountMeta::new(new_account.pubkey(), true),
-            AccountMeta::new_readonly(solana_program::system_program::ID, false), // Add the system program
-        ]);
+        let instruction = Instruction::new_with_borsh(
+            program_id,
+            &ix_data,
+            vec![
+                AccountMeta::new(payer.pubkey(), true),
+                AccountMeta::new(new_account.pubkey(), true),
+                AccountMeta::new_readonly(solana_program::system_program::ID, false), // Add the system program
+            ],
+        );
 
         let mut tx = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
         tx.sign(&[&payer, &new_account], recent_blockhash);
@@ -103,10 +108,7 @@ mod tests {
 
         assert_eq!(acct_data.data.len(), 32);
 
-        let expected_hash = CompressedMemo {
-            memo: memo_str,
-        }
-            .hash::<Poseidon>();
+        let expected_hash = CompressedMemo { memo: memo_str }.hash::<Poseidon>();
         assert_eq!(acct_data.data[..32], expected_hash.expect("BD"));
     }
 
@@ -114,25 +116,24 @@ mod tests {
     async fn test_create_compressed_memo_exceed_max_length() {
         let program_id = Pubkey::new_unique();
 
-        let mut test = ProgramTest::new(
-            "extanded_spl",
-            program_id,
-            processor!(process_instruction),
-        );
+        let mut test =
+            ProgramTest::new("extanded_spl", program_id, processor!(process_instruction));
 
         let (mut banks_client, payer, recent_blockhash) = test.start().await;
         let new_account = Keypair::new();
 
         let memo_str = "a".repeat(129); // Exceeds max length
-        let ix_data = ExtendedSPLMemoInstruction::CreateCompressedMemo {
-            memo: memo_str,
-        };
+        let ix_data = ExtendedSPLMemoInstruction::CreateCompressedMemo { memo: memo_str };
 
-        let instruction = Instruction::new_with_borsh(program_id, &ix_data,vec![
-            AccountMeta::new(payer.pubkey(), true),
-            AccountMeta::new(new_account.pubkey(), true),
-            AccountMeta::new_readonly(solana_program::system_program::ID, false), // Add the system program
-        ]);
+        let instruction = Instruction::new_with_borsh(
+            program_id,
+            &ix_data,
+            vec![
+                AccountMeta::new(payer.pubkey(), true),
+                AccountMeta::new(new_account.pubkey(), true),
+                AccountMeta::new_readonly(solana_program::system_program::ID, false), // Add the system program
+            ],
+        );
 
         let mut tx = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
         tx.sign(&[&payer, &new_account], recent_blockhash);
@@ -142,35 +143,235 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err().unwrap();
 
-        assert_eq!(err, TransactionError::InstructionError(0, InstructionError::Custom(1)));
+        assert_eq!(
+            err,
+            TransactionError::InstructionError(0, InstructionError::Custom(1))
+        );
     }
 
-
-
-    /// Runs a command to completion and returns stdout on success, or an error if it fails.
-    fn run_command_and_get_stdout(cmd: &mut Command) -> Result<String, Box<dyn std::error::Error>> {
-        println!("Running: {:?}", cmd);
-
-        let output = cmd
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit()) // Print stderr directly to our test console
-            .spawn()?
-            .wait_with_output()?;
-
-        if !output.status.success() {
-            return Err(format!(
-                "Command {:?} failed with code {:?}",
-                cmd, output.status.code()
-            )
-                .into());
+    // pub struct TestValidator {
+    //     ledger_dir: Arc<Mutex<String>>,
+    // }
+    //
+    // impl TestValidator {
+    //     pub fn new() -> Self {
+    //         let ledger_dir = Arc::new(Mutex::new(String::from("test-ledger")));
+    //         let ledger_dir_clone = Arc::clone(&ledger_dir);
+    //
+    //         ctrlc::set_handler(move || {
+    //             println!("Interrupt signal received, cleaning up...");
+    //             if let Ok(dir) = ledger_dir_clone.lock() {
+    //                 TestValidator::cleanup_dir(&dir);
+    //             }
+    //             std::process::exit(0);
+    //         })
+    //             .expect("Error setting Ctrl+C handler");
+    //
+    //         Self { ledger_dir }
+    //     }
+    //
+    //     fn cleanup_dir(dir: &str) {
+    //         if Path::new(dir).exists() {
+    //             if let Err(e) = fs::remove_dir_all(dir) {
+    //                 eprintln!("Failed to remove ledger directory '{}': {}", dir, e);
+    //             } else {
+    //                 println!("Cleaned up ledger directory: {}", dir);
+    //             }
+    //         }
+    //     }
+    //
+    //     fn start_test_validator(&self) -> Result<Child, anyhow::Error> {
+    //         let unique_dir = {
+    //             let mut dir = self.ledger_dir.lock().map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    //             let new_dir = format!("test-ledger-{}", rand::random::<u32>());
+    //             *dir = new_dir.clone();
+    //             new_dir
+    //         };
+    //
+    //         println!("Created test directory: {}", unique_dir);
+    //
+    //         for (file, desc) in [
+    //             ("validator-identity.json", "Validator Identity"),
+    //             ("validator-vote-account.json", "Validator Vote Account"),
+    //             ("validator-stake-account.json", "Validator Stake Account"),
+    //             ("faucet-keypair.json", "Faucet Keypair"),
+    //         ] {
+    //             let path = format!("{}/{}", unique_dir, file);
+    //             println!("Generating keypair: {}", path);
+    //             if !Command::new("solana-keygen")
+    //                 .args(&["new", "--no-passphrase", "-so", &path])
+    //                 .status()
+    //                 .map_err(|e| anyhow::anyhow!("Failed to run solana-keygen: {}", e))?
+    //                 .success()
+    //             {
+    //                 return Err(anyhow::anyhow!("Failed to generate {} keypair.", desc));
+    //             }
+    //         }
+    //
+    //         println!("Creating genesis ledger...");
+    //         if !Command::new("solana-genesis")
+    //             .args(&[
+    //                 "--hashes-per-tick", "sleep",
+    //                 "--faucet-lamports", "500000000000000000",
+    //                 "--bootstrap-validator",
+    //                 &format!("{}/validator-identity.json", unique_dir),
+    //                 &format!("{}/validator-vote-account.json", unique_dir),
+    //                 &format!("{}/validator-stake-account.json", unique_dir),
+    //                 "--faucet-pubkey",
+    //                 &format!("{}/faucet-keypair.json", unique_dir),
+    //                 "--ledger", &unique_dir,
+    //                 "--cluster-type", "development",
+    //             ])
+    //             .status()
+    //             .map_err(|e| anyhow::anyhow!("Failed to run solana-genesis: {}", e))?
+    //             .success()
+    //         {
+    //             return Err(anyhow::anyhow!("Failed to create genesis ledger."));
+    //         }
+    //
+    //         println!("Starting Solana Test Validator...");
+    //         let child = Command::new("solana-test-validator")
+    //             .args(&["--reset", "--ledger", &unique_dir])
+    //             .spawn()
+    //             .map_err(|e| anyhow::anyhow!("Failed to start solana-test-validator: {}", e))?;
+    //
+    //         println!("Solana Test Validator is running with ledger: {}", unique_dir);
+    //         Ok(child)
+    //     }
+    //
+    //     pub async fn spawn_validator_thread(self) -> anyhow::Result<Child> {
+    //         let arc_self = Arc::new(self);
+    //         let child = tokio::task::spawn_blocking(move || arc_self.start_test_validator())
+    //             .await?
+    //             .map_err(|e| anyhow::anyhow!(e))?;
+    //
+    //         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    //         Ok(child)
+    //     }
+    // }
+    //
+    //
+    // impl Drop for TestValidator {
+    //     fn drop(&mut self) {
+    //         if let Ok(dir) = self.ledger_dir.lock() {
+    //             TestValidator::cleanup_dir(&dir);
+    //         }
+    //     }
+    // }
+    //
+    fn build_bpf_program(project_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
+        if !Path::new(project_dir).exists() {
+            return Err(format!("Project directory '{}' does not exist", project_dir).into());
         }
 
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        Ok(stdout)
+        println!("Building the BPF program in {}...", project_dir);
+        if !Command::new("cargo")
+            .args(&["build-bpf", "--manifest-path", &format!("{}/Cargo.toml", project_dir)])
+            .status()?
+            .success()
+        {
+            return Err("Failed to build BPF program.".into());
+        }
+
+        println!("BPF build done at: {}", project_dir);
+        Ok(())
     }
+
+    fn deploy_program(project_dir: &str) -> Result<String, Box<dyn std::error::Error>> {
+        if !Path::new(project_dir).exists() {
+            return Err(format!("Project directory '{}' does not exist", project_dir).into());
+        }
+
+        println!("Deploying the program...");
+        let keypair_path = "~/.config/solana/id.json";
+
+        if !Path::new(keypair_path).exists() {
+            println!("Creating default keypair...");
+            if !Command::new("solana-keygen")
+                .args(&["new", "--no-passphrase", "-o", keypair_path])
+                .status()?
+                .success()
+            {
+                return Err("Failed to create default keypair.".into());
+            }
+        }
+
+        let pubkey = String::from_utf8_lossy(
+            &Command::new("solana")
+                .args(["address", "-k", keypair_path])
+                .output()?
+                .stdout,
+        )
+            .trim()
+            .to_string();
+
+        Command::new("solana")
+            .args(["airdrop", "10", &pubkey, "--url", "http://127.0.0.1:8899"])
+            .status()?;
+
+        let so_path = format!("{}/target/deploy/extanded_spl.so", project_dir);
+        if !Path::new(&so_path).exists() {
+            return Err("Program file does not exist. Build it first.".into());
+        }
+
+        let deploy_output = Command::new("solana")
+            .args([
+                "program", "deploy", "--keypair", keypair_path, &so_path, "--url", "http://127.0.0.1:8899",
+            ])
+            .output()?;
+
+        let output_str = String::from_utf8_lossy(&deploy_output.stdout);
+        let program_id = output_str
+            .lines()
+            .find(|line| line.starts_with("Program Id:"))
+            .and_then(|line| line.split("Program Id:").nth(1))
+            .map(str::trim)
+            .map(String::from)
+            .ok_or("Failed to parse program ID.")?;
+
+        println!("Program deployed successfully: {}", program_id);
+        Ok(program_id)
+    }
+
+    fn run_typescript_test_locally(project_dir: &str, program_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+        if !Path::new(project_dir).exists() {
+            return Err(format!("Project directory '{}' does not exist", project_dir).into());
+        }
+
+        Command::new("npm")
+            .args(["install"])
+            .current_dir(project_dir)
+            .status()?;
+
+        Command::new("npm")
+            .args(["run", "ts-node", "--", "tests/ts/test_compressed_memo.ts", &format!("--program-id={}", program_id)])
+            .current_dir(project_dir)
+            .status()?;
+
+        println!("TypeScript test completed.");
+        Ok(())
+    }
+    //
+    // #[tokio::test]
+    // async fn test_solana_program_fully_in_docker_via_commands() -> Result<(), Box<dyn std::error::Error>> {
+    //     let validator = TestValidator::new();
+    //     let mut child = validator.spawn_validator_thread().await?;
+    //
+    //     let project_dir = std::env::current_dir()?.to_string_lossy().to_string();
+    //     build_bpf_program(&project_dir)?;
+    //
+    //     let program_id = deploy_program(&project_dir)?;
+    //     run_typescript_test_locally(&project_dir, &program_id)?;
+    //
+    //     println!("Killing the test validator...");
+    //     child.kill()?;
+    //     child.wait()?;
+    //     Ok(())
+    // }
 
     pub struct TestValidator {
         ledger_dir: Arc<Mutex<String>>,
+        child: Option<Child>,
     }
 
     impl TestValidator {
@@ -178,57 +379,61 @@ mod tests {
             let ledger_dir = Arc::new(Mutex::new(String::from("test-ledger")));
             let ledger_dir_clone = Arc::clone(&ledger_dir);
 
-            // Setup Ctrl+C handler for cleanup
             ctrlc::set_handler(move || {
                 println!("Interrupt signal received, cleaning up...");
                 if let Ok(dir) = ledger_dir_clone.lock() {
-                    println!("Removing ledger directory: {}", *dir);
-                    if fs::metadata(&*dir).is_ok() {
-                        if let Err(e) = fs::remove_dir_all(&*dir) {
-                            eprintln!("Failed to remove ledger directory: {}", e);
-                        }
-                    }
+                    TestValidator::cleanup_dir(&dir);
                 }
                 process::exit(0);
             })
                 .expect("Error setting Ctrl+C handler");
 
-            Self { ledger_dir }
+            Self {
+                ledger_dir,
+                child: None,
+            }
         }
 
-        fn start_test_validator(&self) -> Result<(), Box<dyn std::error::Error + '_>> {
-            // Create a unique directory for this test
-            let unique_dir = format!("test-ledger-{}", rand::random::<u32>());
-            {
-                let mut dir = self.ledger_dir.lock()?;
-                *dir = unique_dir.clone();
+        fn cleanup_dir(dir: &str) {
+            if Path::new(dir).exists() {
+                if let Err(e) = fs::remove_dir_all(dir) {
+                    eprintln!("Failed to remove ledger directory '{}': {}", dir, e);
+                } else {
+                    println!("Cleaned up ledger directory: {}", dir);
+                }
             }
+        }
+
+        fn start_test_validator(&mut self) -> Result<(), anyhow::Error> {
+            let unique_dir = {
+                let mut dir = self.ledger_dir.lock().map_err(|e| anyhow!(e.to_string()))?;
+                let new_dir = format!("test-ledger-{}", rand::random::<u32>());
+                *dir = new_dir.clone();
+                new_dir
+            };
 
             println!("Created test directory: {}", unique_dir);
 
-            // Generate keypairs
-            let keypairs = [
+            for (file, desc) in [
                 ("validator-identity.json", "Validator Identity"),
                 ("validator-vote-account.json", "Validator Vote Account"),
                 ("validator-stake-account.json", "Validator Stake Account"),
                 ("faucet-keypair.json", "Faucet Keypair"),
-            ];
-
-            for (file, description) in &keypairs {
+            ] {
                 let path = format!("{}/{}", unique_dir, file);
                 println!("Generating keypair: {}", path);
-                let status = Command::new("solana-keygen")
+                if !Command::new("solana-keygen")
                     .args(&["new", "--no-passphrase", "-so", &path])
-                    .status()?;
-
-                if !status.success() {
-                    return Err(format!("Failed to generate {} keypair.", description).into());
+                    .status()
+                    .map_err(|e| anyhow!("Failed to run solana-keygen: {}", e))?
+                    .success()
+                {
+                    return Err(anyhow!("Failed to generate {} keypair.", desc));
                 }
             }
 
-            // Create the genesis ledger
             println!("Creating genesis ledger...");
-            let status = Command::new("solana-genesis")
+            if !Command::new("solana-genesis")
                 .args(&[
                     "--hashes-per-tick", "sleep",
                     "--faucet-lamports", "500000000000000000",
@@ -238,247 +443,81 @@ mod tests {
                     &format!("{}/validator-stake-account.json", unique_dir),
                     "--faucet-pubkey",
                     &format!("{}/faucet-keypair.json", unique_dir),
-                    "--ledger",
-                    &unique_dir,
-                    "--cluster-type",
-                    "development",
+                    "--ledger", &unique_dir,
+                    "--cluster-type", "development",
                 ])
-                .status()?;
-
-            if !status.success() {
-                return Err("Failed to create genesis ledger.".into());
+                .status()
+                .map_err(|e| anyhow!("Failed to run solana-genesis: {}", e))?
+                .success()
+            {
+                return Err(anyhow!("Failed to create genesis ledger."));
             }
 
-            // Start the Solana Test Validator
             println!("Starting Solana Test Validator...");
-            let status = Command::new("solana-test-validator")
+            let child = Command::new("solana-test-validator")
                 .args(&["--reset", "--ledger", &unique_dir])
-                .status()?;
-
-            if !status.success() {
-                return Err("Failed to start Solana Test Validator.".into());
-            }
+                .spawn()
+                .map_err(|e| anyhow!("Failed to start solana-test-validator: {}", e))?;
 
             println!("Solana Test Validator is running with ledger: {}", unique_dir);
+            self.child = Some(child);
+
+            // this should be some primitive backoff mechanism
+            for _ in 0..10 {
+                if Command::new("solana")
+                    .args(["cluster-version", "--url", "http://127.0.0.1:8899"])
+                    .status()
+                    .is_ok()
+                {
+                    println!("Solana Test Validator is ready.");
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_secs(2));
+            }
+
             Ok(())
         }
 
-        pub async fn spawn_validator_thread(self) -> Result<tokio::task::JoinHandle<()>, Box<dyn std::error::Error>> {
-            let arc_self = Arc::new(self);
-
-            let handle = tokio::task::spawn_blocking(move || {
-                arc_self.start_test_validator().map_err(|e| eprintln!("{}", e)).unwrap();
-            });
-
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await; // todo add backoff
-
-            Ok(handle)
+        pub async fn spawn_validator_thread(&mut self) -> anyhow::Result<()> {
+            self.start_test_validator()?;
+            Ok(())
         }
     }
 
-    impl Drop for TestValidator { // todo add drop for handle
+    impl Drop for TestValidator {
         fn drop(&mut self) {
-            if let Ok(dir) = self.ledger_dir.lock() {
-                println!("Cleaning up ledger directory: {}", *dir);
-                if fs::metadata(&*dir).is_ok() {
-                    if let Err(e) = fs::remove_dir_all(&*dir) {
-                        eprintln!("Failed to remove ledger directory: {}", e);
-                    }
+            if let Some(mut child) = self.child.take() {
+                println!("Killing Solana Test Validator process...");
+                if let Err(e) = child.kill() {
+                    eprintln!("Failed to kill Solana Test Validator process: {}", e);
+                }
+                if let Err(e) = child.wait() {
+                    eprintln!("Failed to wait for Solana Test Validator process: {}", e);
                 }
             }
-        }
-    }
 
-
-    fn build_bpf_program(project_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
-
-        if !Path::new(project_dir).exists() {
-            return Err(format!("Project directory '{}' does not exist", project_dir).into());
-        }
-
-        println!("Building the BPF program locally in {}...", project_dir);
-        let status = Command::new("cargo")
-            .args(&["build-bpf", "--manifest-path", &format!("{}/Cargo.toml", project_dir)])
-            .status()?;
-
-        if !status.success() {
-            return Err("Failed to build BPF program locally".into());
-        }
-
-        println!("BPF build done at: {}", project_dir);
-        Ok(())
-    }
-
-    fn deploy_program(project_dir: &str) -> Result<String, Box<dyn std::error::Error>> {
-
-        if !Path::new(project_dir).exists() {
-            return Err(format!("Project directory '{}' does not exist", project_dir).into());
-        }
-
-        println!("Ensuring a default keypair is created...");
-        let keypair_path = "~/.config/solana/id.json";
-
-        // Check if the keypair file exists
-        if !Path::new(&keypair_path).exists() {
-            println!("Creating default keypair...");
-            let status = Command::new("solana-keygen")
-                .args(&["new", "--no-passphrase", "-o", &keypair_path])
-                .status()?;
-
-            if !status.success() {
-                return Err("Failed to create default Solana keypair.".into());
-            }
-
-            println!("Default keypair created successfully.");
-        } else {
-            println!("Default keypair already created.");
-        }
-
-        let output = Command::new("solana")
-            .args(["address", "-k", keypair_path])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
-            .output()?;
-
-        if !output.status.success() {
-            return Err("Failed to read keypair address with `solana address`".into());
-        }
-
-        let pubkey = String::from_utf8_lossy(&output.stdout).trim().to_string();
-
-        let status = Command::new("solana")
-            .args([
-                "airdrop",
-                "10",
-                &pubkey,
-                "--url", "http://127.0.0.1:8899",
-            ])
-            .status()?;
-
-        if !status.success() {
-            return Err("Failed to airdrop SOL to the new wallet".into());
-        }
-
-        println!("Deploying the program using local Solana CLI tools...");
-
-        // Define the RPC URL and the path to the program's `.so` file
-        let rpc_url = "http://127.0.0.1:8899";
-        let so_path = format!("{}/target/deploy/extanded_spl.so", project_dir);
-
-        println!("Deploying program at: {}", so_path);
-
-        // Check if the `.so` file exists
-        if !Path::new(&so_path).exists() {
-            return Err(format!("Program file '{}' does not exist. Build the program first.", so_path).into());
-        }
-
-        // Deploy the program using the Solana CLI
-        let deploy_output = Command::new("solana")
-            .args(&[
-                "program",
-                "deploy",
-                "--keypair",
-                &keypair_path,
-                &so_path,
-                "--url",
-                rpc_url,
-            ]).stdout(Stdio::piped())
-            .output()?;
-
-        if !deploy_output.status.success() {
-            // In case of failure, attach stderr or stdout to the error message
-            let stderr = String::from_utf8_lossy(&deploy_output.stderr);
-            let stdout = String::from_utf8_lossy(&deploy_output.stdout);
-            return Err(format!("Failed to deploy the program.\nstdout:\n{}\nstderr:\n{}", stdout, stderr).into());
-        }
-
-        let output_str = String::from_utf8_lossy(&deploy_output.stdout);
-        let program_id = output_str
-            .lines()
-            .find(|line| line.starts_with("Program Id:"))
-            .and_then(|line| line.split("Program Id:").nth(1)) // split into ["", " <ID>"]
-            .map(str::trim)                                    // remove surrounding whitespace
-            .map(ToString::to_string)                          // convert &str -> String
-            .ok_or("Failed to parse program ID from deployment output.")?;
-
-        println!("Program deployed successfully. Program ID: {}", program_id);
-        println!("Program deployed successfully.");
-
-        Ok(program_id)
-    }
-
-    fn run_typescript_test_locally(project_dir: &str, program_id: &str) -> Result<(), Box<dyn std::error::Error>> {
-        if !Path::new(project_dir).exists() {
-            return Err(format!("Project directory '{}' does not exist", project_dir).into());
-        }
-
-        println!("Running local TypeScript test in {}...", project_dir);
-
-        {
-            let status = Command::new("npm")
-                .args(&["install"])
-                .current_dir(project_dir)
-                .status()?;
-
-            if !status.success() {
-                return Err("npm install failed".into());
+            if let Ok(dir) = self.ledger_dir.lock() {
+                TestValidator::cleanup_dir(&dir);
             }
         }
-
-        {
-            let status = Command::new("npm")
-                .args(&[
-                    "run",
-                    "ts-node", // Assuming you have an npm script for ts-node
-                    "--",
-                    "tests/ts/test_compressed_memo.ts",
-                    &format!("--program-id={}", program_id),
-                ])
-                .current_dir(project_dir)
-                .status()?;
-
-            if !status.success() {
-                return Err("ts-node test script failed".into());
-            }
-        }
-
-        println!("TypeScript test completed successfully (locally).");
-        Ok(())
     }
 
-    /// 5) Stop & Remove the validator container.
-    fn stop_and_remove_validator(name: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let _ = Command::new("docker")
-            .args(&["stop", name])
-            .status();
-
-        let _ = Command::new("docker")
-            .args(&["rm", name])
-            .status();
-
-        Ok(())
-    }
-
-    /// Bring it all together in a single test.
     #[tokio::test]
     async fn test_solana_program_fully_in_docker_via_commands() -> Result<(), Box<dyn std::error::Error>> {
-        let validator_container_name = TestValidator::new();
-        let handle = validator_container_name.spawn_validator_thread().await?;
+        let mut validator = TestValidator::new();
+        validator.spawn_validator_thread().await?;
 
         let project_dir = std::env::current_dir()?.to_string_lossy().to_string();
         build_bpf_program(&project_dir)?;
 
         let program_id = deploy_program(&project_dir)?;
-        println!("Program deployed.");
-
         run_typescript_test_locally(&project_dir, &program_id)?;
 
-        // 6) Cleanup
-        // stop_and_remove_validator(&validator_container_name)?;
-        // println!("Validator stopped & removed.");
-
+        // Cleanup happens automatically when `validator` goes out of scope
         Ok(())
     }
+
+
 
 
 }
