@@ -42,7 +42,7 @@ mod tests {
             vec![
                 AccountMeta::new(payer.pubkey(), true),
                 AccountMeta::new(new_account.pubkey(), true),
-                AccountMeta::new_readonly(solana_program::system_program::ID, false), // Add the system program
+                AccountMeta::new_readonly(solana_program::system_program::ID, false),
             ],
         );
 
@@ -76,7 +76,7 @@ mod tests {
         let (mut banks_client, payer, recent_blockhash) = test.start().await;
         let new_account = Keypair::new();
 
-        let memo_str = "a".repeat(128); // Maximum allowed length
+        let memo_str = "a".repeat(128);
         let ix_data = ExtendedSPLMemoInstruction::CreateCompressedMemo {
             memo: memo_str.to_string(),
         };
@@ -87,7 +87,7 @@ mod tests {
             vec![
                 AccountMeta::new(payer.pubkey(), true),
                 AccountMeta::new(new_account.pubkey(), true),
-                AccountMeta::new_readonly(solana_program::system_program::ID, false), // Add the system program
+                AccountMeta::new_readonly(solana_program::system_program::ID, false),
             ],
         );
 
@@ -117,7 +117,7 @@ mod tests {
         let (mut banks_client, payer, recent_blockhash) = test.start().await;
         let new_account = Keypair::new();
 
-        let memo_str = "a".repeat(129); // Exceeds max length
+        let memo_str = "a".repeat(129);
         let ix_data = ExtendedSPLMemoInstruction::CreateCompressedMemo { memo: memo_str };
 
         let instruction = Instruction::new_with_borsh(
@@ -126,7 +126,7 @@ mod tests {
             vec![
                 AccountMeta::new(payer.pubkey(), true),
                 AccountMeta::new(new_account.pubkey(), true),
-                AccountMeta::new_readonly(solana_program::system_program::ID, false), // Add the system program
+                AccountMeta::new_readonly(solana_program::system_program::ID, false),
             ],
         );
 
@@ -156,8 +156,8 @@ mod tests {
                 "--manifest-path",
                 &format!("{}/Cargo.toml", project_dir),
             ])
-            .stdout(Stdio::null()) // Suppress standard output
-            .stderr(Stdio::null()) // Suppress standard error
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
             .status()?
             .success()
         {
@@ -350,8 +350,8 @@ mod tests {
             println!("Starting Solana Test Validator...");
             let child = Command::new("solana-test-validator")
                 .args(["--reset", "--ledger", &unique_dir])
-                .stdout(Stdio::null()) // Suppress standard output
-                .stderr(Stdio::inherit()) // Suppress standard error
+                .stdout(Stdio::null())
+                .stderr(Stdio::inherit())
                 .spawn()
                 .map_err(|e| anyhow!("Failed to start solana-test-validator: {}", e))?;
 
@@ -385,7 +385,7 @@ mod tests {
 
                 std::thread::sleep(std::time::Duration::from_secs(2));
             }
-            
+
             println!(
                 "Solana Test Validator is running with ledger: {}",
                 unique_dir
