@@ -16,14 +16,13 @@ use crate::{error::ExtendedSPLMemoError, instruction::ExtendedSPLMemoInstruction
 
 use light_hasher::{DataHasher, Poseidon};
 
-/// A simple struct that holds the memo. We'll derive LightHasher for it.
 #[derive(LightHasher)]
 pub struct CompressedMemo {
     #[truncate]
     pub memo: String,
 }
 
-pub const MAX_MEMO_LEN: usize = 128; // arbitrary for demo
+pub const MAX_MEMO_LEN: usize = 128;
 
 pub fn process_instruction(
     program_id: &Pubkey,
@@ -45,7 +44,6 @@ fn process_original_memo(_accounts: &[AccountInfo], memo: &str) -> ProgramResult
     if memo.len() > MAX_MEMO_LEN {
         return Err(ExtendedSPLMemoError::MemoTooLong.into());
     }
-    // Just log it, as SPL Memo does
     msg!("Memo: {}", memo);
     Ok(())
 }
@@ -67,17 +65,14 @@ fn process_create_compressed_memo(
         return Err(ExtendedSPLMemoError::MemoTooLong.into());
     }
 
-    // Construct our CompressedMemo struct
     let compressed_memo_struct = CompressedMemo {
         memo: memo.to_string(),
     };
 
-    // Derive-macro provided .hash() => typically returns a [u8; 32] and use Poseidon hasher
     let hashed_data = compressed_memo_struct
         .hash::<Poseidon>()
         .map_err(|_| ExtendedSPLMemoError::HashingError)?;
 
-    // Create the account if it's not already
     if new_account_info.data_is_empty() {
         let rent = Rent::get()?;
         let required_lamports = rent.minimum_balance(hashed_data.len());
@@ -92,7 +87,6 @@ fn process_create_compressed_memo(
         invoke(&create_ix, &[payer_info.clone(), new_account_info.clone()])?;
     }
 
-    // Write the hashed data to the new account
     let account_data_slice = &mut new_account_info.try_borrow_mut_data()?[..hashed_data.len()];
     account_data_slice.copy_from_slice(&hashed_data);
 
